@@ -9,7 +9,11 @@ import com.stockflow.auth.service.AuthService;
 import com.stockflow.category.service.CategoryService;
 import com.stockflow.customer.service.CustomerService;
 import com.stockflow.inventory.service.InventoryService;
+import com.stockflow.inventory.service.InventoryMovementService;
 import com.stockflow.product.service.ProductService;
+import com.stockflow.sale.service.SaleService;
+import com.stockflow.stockentry.service.StockEntryService;
+import com.stockflow.stockexit.service.StockExitService;
 import com.stockflow.supplier.service.SupplierService;
 import com.stockflow.user.dto.UserResponse;
 import com.stockflow.user.service.UserService;
@@ -61,6 +65,21 @@ class SecurityIntegrationTest {
 
 	@MockitoBean
 	private InventoryService inventoryService;
+
+	@MockitoBean
+	private InventoryMovementService inventoryMovementService;
+
+	@MockitoBean
+	private SaleService saleService;
+
+	@MockitoBean
+	private StockEntryService stockEntryService;
+
+	@MockitoBean
+	private StockExitService stockExitService;
+
+	@MockitoBean
+	private CurrentUserService currentUserService;
 
 	@MockitoBean
 	private UserService userService;
@@ -211,11 +230,118 @@ class SecurityIntegrationTest {
 				.andExpect(jsonPath("$.fieldErrors.password").exists());
 	}
 
+	@Test
+	void adminCanAccessAllOperationalApis() throws Exception {
+		when(currentUserService.getCurrentUser()).thenReturn(domainUser());
+
+		mockMvc.perform(post("/api/sales")
+					.with(user("admin").roles("ADMIN"))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(saleJson()))
+				.andExpect(status().isCreated());
+		mockMvc.perform(post("/api/stock-entries")
+					.with(user("admin").roles("ADMIN"))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(stockEntryJson()))
+				.andExpect(status().isCreated());
+		mockMvc.perform(post("/api/stock-exits")
+					.with(user("admin").roles("ADMIN"))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(stockExitJson()))
+				.andExpect(status().isCreated());
+		mockMvc.perform(get("/api/inventory-movements")
+					.with(user("admin").roles("ADMIN")))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void inventoryManagerCanReadButCannotMutateSales() throws Exception {
+		mockMvc.perform(get("/api/sales")
+					.with(user("manager").roles("INVENTORY_MANAGER")))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/sales")
+					.with(user("manager").roles("INVENTORY_MANAGER"))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(saleJson()))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/sales/1/complete")
+					.with(user("manager").roles("INVENTORY_MANAGER")))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/sales/1/cancel")
+					.with(user("manager").roles("INVENTORY_MANAGER")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void inventoryManagerCanManageStockEntriesExitsAndReadMovements() throws Exception {
+		when(currentUserService.getCurrentUser()).thenReturn(domainUser());
+
+		mockMvc.perform(post("/api/stock-entries")
+					.with(user("manager").roles("INVENTORY_MANAGER"))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(stockEntryJson()))
+				.andExpect(status().isCreated());
+		mockMvc.perform(post("/api/stock-exits")
+					.with(user("manager").roles("INVENTORY_MANAGER"))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(stockExitJson()))
+				.andExpect(status().isCreated());
+		mockMvc.perform(get("/api/inventory-movements")
+					.with(user("manager").roles("INVENTORY_MANAGER")))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void sellerCanReadCreateCompleteAndCancelSales() throws Exception {
+		when(currentUserService.getCurrentUser()).thenReturn(domainUser());
+
+		mockMvc.perform(get("/api/sales").with(user("seller").roles("SELLER")))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/sales")
+					.with(user("seller").roles("SELLER"))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(saleJson()))
+				.andExpect(status().isCreated());
+		mockMvc.perform(post("/api/sales/1/complete")
+					.with(user("seller").roles("SELLER")))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/sales/1/cancel")
+					.with(user("seller").roles("SELLER")))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void sellerCannotAccessStockEntriesExitsOrMovements() throws Exception {
+		mockMvc.perform(get("/api/stock-entries").with(user("seller").roles("SELLER")))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(get("/api/stock-exits").with(user("seller").roles("SELLER")))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(get("/api/inventory-movements")
+					.with(user("seller").roles("SELLER")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void allNewApisRequireAuthentication() throws Exception {
+		mockMvc.perform(get("/api/sales")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get("/api/stock-entries")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get("/api/stock-exits")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get("/api/inventory-movements"))
+				.andExpect(status().isUnauthorized());
+	}
+
 	private UserDetails principal(String authority) {
 		return User.withUsername("user@example.com")
 				.password("encoded")
 				.authorities(new SimpleGrantedAuthority(authority))
 				.build();
+	}
+
+	private com.stockflow.user.entity.User domainUser() {
+		com.stockflow.user.entity.User user = new com.stockflow.user.entity.User();
+		user.setId(7L);
+		user.setActive(true);
+		return user;
 	}
 
 	private UserResponse userResponse() {
@@ -242,5 +368,20 @@ class SecurityIntegrationTest {
 		return "{\"documentNumber\":\"123\",\"firstName\":\"Ana\","
 				+ "\"lastName\":\"Diaz\",\"email\":\"ana@example.com\","
 				+ "\"phone\":\"555\",\"address\":\"Main St\",\"active\":true}";
+	}
+
+	private String saleJson() {
+		return "{\"customerId\":null,\"items\":[{\"productId\":2,\"quantity\":1}]}";
+	}
+
+	private String stockEntryJson() {
+		return "{\"supplierId\":2,\"referenceNumber\":\"REF-1\","
+				+ "\"notes\":null,\"items\":[{\"productId\":3,"
+				+ "\"quantity\":2,\"unitCost\":5.00}]}";
+	}
+
+	private String stockExitJson() {
+		return "{\"reason\":\"DAMAGED\",\"notes\":null,"
+				+ "\"items\":[{\"productId\":3,\"quantity\":2}]}";
 	}
 }
