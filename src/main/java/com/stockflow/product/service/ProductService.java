@@ -6,6 +6,8 @@ import com.stockflow.category.entity.Category;
 import com.stockflow.category.repository.CategoryRepository;
 import com.stockflow.common.exception.DuplicateResourceException;
 import com.stockflow.common.exception.ResourceNotFoundException;
+import com.stockflow.inventory.entity.Inventory;
+import com.stockflow.inventory.repository.InventoryRepository;
 import com.stockflow.product.dto.ProductRequest;
 import com.stockflow.product.dto.ProductResponse;
 import com.stockflow.product.entity.Product;
@@ -19,15 +21,18 @@ public class ProductService {
 
 	private final ProductRepository productRepository;
 	private final CategoryRepository categoryRepository;
+	private final InventoryRepository inventoryRepository;
 	private final ProductMapper productMapper;
 
 	public ProductService(
 			ProductRepository productRepository,
 			CategoryRepository categoryRepository,
+			InventoryRepository inventoryRepository,
 			ProductMapper productMapper
 	) {
 		this.productRepository = productRepository;
 		this.categoryRepository = categoryRepository;
+		this.inventoryRepository = inventoryRepository;
 		this.productMapper = productMapper;
 	}
 
@@ -53,7 +58,15 @@ public class ProductService {
 
 		Category category = findCategoryById(request.categoryId());
 		Product product = productMapper.toEntity(request, category);
-		return productMapper.toResponse(productRepository.save(product));
+		Product savedProduct = productRepository.save(product);
+
+		Inventory inventory = new Inventory();
+		inventory.setProduct(savedProduct);
+		inventory.setCurrentStock(0);
+		inventory.setMinimumStock(0);
+		inventoryRepository.save(inventory);
+
+		return productMapper.toResponse(savedProduct);
 	}
 
 	@Transactional

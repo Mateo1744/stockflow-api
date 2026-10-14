@@ -1,5 +1,6 @@
 package com.stockflow.product.service;
 
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -8,6 +9,8 @@ import com.stockflow.category.entity.Category;
 import com.stockflow.category.repository.CategoryRepository;
 import com.stockflow.common.exception.DuplicateResourceException;
 import com.stockflow.common.exception.ResourceNotFoundException;
+import com.stockflow.inventory.entity.Inventory;
+import com.stockflow.inventory.repository.InventoryRepository;
 import com.stockflow.product.dto.ProductRequest;
 import com.stockflow.product.dto.ProductResponse;
 import com.stockflow.product.entity.Product;
@@ -18,13 +21,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -37,6 +43,9 @@ class ProductServiceTest {
 
 	@Mock
 	private CategoryRepository categoryRepository;
+
+	@Mock
+	private InventoryRepository inventoryRepository;
 
 	@Mock
 	private ProductMapper productMapper;
@@ -73,7 +82,7 @@ class ProductServiceTest {
 	}
 
 	@Test
-	void createSavesProductWhenSkuAndCategoryAreValid() {
+	void createSavesProductAndCreatesItsInitialInventory() {
 		ProductRequest request = request("SKU-1", 10L);
 		Category category = category(10L);
 		Product product = product(null, "SKU-1");
@@ -86,6 +95,33 @@ class ProductServiceTest {
 		when(productMapper.toResponse(saved)).thenReturn(response);
 
 		assertSame(response, productService.create(request));
+
+		var captor = org.mockito.ArgumentCaptor.forClass(Inventory.class);
+		verify(inventoryRepository, times(1)).save(captor.capture());
+		Inventory inventory = captor.getValue();
+		assertSame(saved, inventory.getProduct());
+		assertEquals(0, inventory.getCurrentStock());
+		assertEquals(0, inventory.getMinimumStock());
+	}
+
+	@Test
+	void createIsTransactionalSoInventoryFailureRollsBackProductCreation()
+			throws NoSuchMethodException {
+		ProductRequest request = request("SKU-1", 10L);
+		Category category = category(10L);
+		Product product = product(null, "SKU-1");
+		Product saved = product(1L, "SKU-1");
+		when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+		when(productMapper.toEntity(request, category)).thenReturn(product);
+		when(productRepository.save(product)).thenReturn(saved);
+		when(inventoryRepository.save(any(Inventory.class)))
+				.thenThrow(new RuntimeException("Inventory persistence failed"));
+
+		assertThrows(RuntimeException.class, () -> productService.create(request));
+		verify(productMapper, never()).toResponse(any());
+
+		Method method = ProductService.class.getMethod("create", ProductRequest.class);
+		assertNotNull(method.getAnnotation(Transactional.class));
 	}
 
 	@Test
