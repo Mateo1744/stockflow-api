@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 
 public record ProductRequest(
@@ -12,6 +13,6 @@ public record ProductRequest(
 		String description,
 		@NotNull @PositiveOrZero BigDecimal salePrice,
 		@NotNull Boolean active,
-		@NotNull Long categoryId
+		@NotNull @Positive Long categoryId
 ) {
 }
