@@ -13,6 +13,8 @@ import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,6 +22,22 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	@ExceptionHandler(AuthenticationException.class)
+	public ResponseEntity<ApiErrorResponse> handleAuthentication(
+			AuthenticationException exception,
+			HttpServletRequest request
+	) {
+		return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid credentials", request, Map.of());
+	}
+
+	@ExceptionHandler(AccessDeniedException.class)
+	public ResponseEntity<ApiErrorResponse> handleAccessDenied(
+			AccessDeniedException exception,
+			HttpServletRequest request
+	) {
+		return buildResponse(HttpStatus.FORBIDDEN, "Access denied", request, Map.of());
+	}
 
 	@ExceptionHandler(ResourceNotFoundException.class)
 	public ResponseEntity<ApiErrorResponse> handleResourceNotFound(
