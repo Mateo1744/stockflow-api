@@ -15,6 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -35,17 +37,29 @@ class InventoryMovementControllerTest {
 	@BeforeEach
 	void setUp() {
 		mockMvc = standaloneSetup(new InventoryMovementController(inventoryMovementService))
+				.setCustomArgumentResolvers(new org.springframework.data.web.PageableHandlerMethodArgumentResolver())
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
 
 	@Test
 	void findAllReturns200() throws Exception {
-		when(inventoryMovementService.findAll()).thenReturn(List.of(response()));
+		when(inventoryMovementService.findAll(any(), any(), any(), any())).thenReturn(
+				new com.stockflow.common.dto.PageResponse<>(List.of(response()), 0, 20, 1, 1, true, true));
 
 		mockMvc.perform(get("/api/inventory-movements"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].type").value("EXIT"));
+				.andExpect(jsonPath("$.content[0].type").value("EXIT"));
+	}
+
+	@Test
+	void findAllAcceptsMovementTypeFilter() throws Exception {
+		when(inventoryMovementService.findAll(any(), any(), any(), any())).thenReturn(
+				new com.stockflow.common.dto.PageResponse<>(List.of(), 0, 20, 0, 0, true, true));
+		mockMvc.perform(get("/api/inventory-movements").param("type", "ENTRY"))
+				.andExpect(status().isOk());
+		verify(inventoryMovementService).findAll(any(),
+				org.mockito.ArgumentMatchers.eq(InventoryMovement.Type.ENTRY), any(), any());
 	}
 
 	@Test

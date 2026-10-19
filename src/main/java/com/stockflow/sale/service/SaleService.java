@@ -1,6 +1,7 @@
 package com.stockflow.sale.service;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.stockflow.common.exception.InsufficientStockException;
+import com.stockflow.common.dto.PageResponse;
 import com.stockflow.common.exception.InvalidOperationException;
 import com.stockflow.common.exception.ResourceNotFoundException;
 import com.stockflow.customer.entity.Customer;
@@ -29,6 +31,8 @@ import com.stockflow.sale.repository.SaleRepository;
 import com.stockflow.user.entity.User;
 import com.stockflow.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -67,6 +71,17 @@ public class SaleService {
 		return saleRepository.findAll().stream()
 				.map(saleMapper::toResponse)
 				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public PageResponse<SaleResponse> findAll(String saleNumber, Sale.Status status,
+			Long customerId, Long sellerId, Instant from, Instant to, Pageable pageable) {
+		Specification<Sale> spec = Specification.allOf(
+				contains("saleNumber", saleNumber), equal("status", status),
+				equalNested("customer", "id", customerId), equalNested("seller", "id", sellerId),
+				from == null ? null : (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("createdAt"), from),
+				to == null ? null : (root, query, cb) -> cb.lessThanOrEqualTo(root.get("createdAt"), to));
+		return PageResponse.from(saleRepository.findAll(spec, pageable).map(saleMapper::toResponse));
 	}
 
 	@Transactional(readOnly = true)
@@ -170,10 +185,9 @@ public class SaleService {
 		}
 
 		Map<Long, Inventory> inventoryByProduct = new HashMap<>();
-		for (Map.Entry<Long, Integer> requirement : requiredQuantityByProduct.entrySet()) {
-			Long productId = requirement.getKey();
-			Inventory inventory = findInventoryByProductId(productId);
-			int requiredQuantity = requirement.getValue();
+		for (Long productId : requiredQuantityByProduct.keySet().stream().sorted().toList()) {
+			Inventory inventory = findInventoryByProductIdForUpdate(productId);
+			int requiredQuantity = requiredQuantityByProduct.get(productId);
 			if (inventory.getCurrentStock() < requiredQuantity) {
 				throw insufficientStock(
 						productId, inventory.getCurrentStock(), requiredQuantity
@@ -221,6 +235,25 @@ public class SaleService {
 				.orElseThrow(() -> new ResourceNotFoundException(
 						"Inventory not found for product id: " + productId
 				));
+	}
+
+	private Inventory findInventoryByProductIdForUpdate(Long productId) {
+		return inventoryRepository.findByProductIdForUpdate(productId)
+				.orElseThrow(() -> new ResourceNotFoundException(
+						"Inventory not found for product id: " + productId));
+	}
+
+	private Specification<Sale> contains(String field, String value) {
+		return value == null || value.isBlank() ? null : (root, query, cb) ->
+				cb.like(cb.lower(root.get(field)), "%" + value.trim().toLowerCase() + "%");
+	}
+
+	private Specification<Sale> equal(String field, Object value) {
+		return value == null ? null : (root, query, cb) -> cb.equal(root.get(field), value);
+	}
+
+	private Specification<Sale> equalNested(String association, String field, Object value) {
+		return value == null ? null : (root, query, cb) -> cb.equal(root.get(association).get(field), value);
 	}
 
 	private String generateSaleNumber() {

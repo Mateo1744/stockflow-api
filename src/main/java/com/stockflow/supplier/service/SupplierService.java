@@ -3,6 +3,7 @@ package com.stockflow.supplier.service;
 import java.util.List;
 
 import com.stockflow.common.exception.DuplicateResourceException;
+import com.stockflow.common.dto.PageResponse;
 import com.stockflow.common.exception.ResourceNotFoundException;
 import com.stockflow.supplier.dto.SupplierRequest;
 import com.stockflow.supplier.dto.SupplierResponse;
@@ -10,6 +11,8 @@ import com.stockflow.supplier.entity.Supplier;
 import com.stockflow.supplier.mapper.SupplierMapper;
 import com.stockflow.supplier.repository.SupplierRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -28,6 +31,23 @@ public class SupplierService {
 		return supplierRepository.findAll().stream()
 				.map(supplierMapper::toResponse)
 				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public PageResponse<SupplierResponse> findAll(String taxId, String name, Boolean active,
+			Pageable pageable) {
+		Specification<Supplier> spec = Specification.allOf(
+				contains("taxId", taxId), contains("name", name), equal("active", active));
+		return PageResponse.from(supplierRepository.findAll(spec, pageable).map(supplierMapper::toResponse));
+	}
+
+	private Specification<Supplier> contains(String field, String value) {
+		return value == null || value.isBlank() ? null : (root, query, cb) ->
+				cb.like(cb.lower(root.get(field)), "%" + value.trim().toLowerCase() + "%");
+	}
+
+	private Specification<Supplier> equal(String field, Object value) {
+		return value == null ? null : (root, query, cb) -> cb.equal(root.get(field), value);
 	}
 
 	@Transactional(readOnly = true)

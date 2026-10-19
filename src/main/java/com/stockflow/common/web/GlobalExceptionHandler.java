@@ -13,6 +13,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -123,6 +124,19 @@ public class GlobalExceptionHandler {
 				request,
 				Map.of()
 		);
+	}
+
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ResponseEntity<ApiErrorResponse> handleIllegalArgument(
+			IllegalArgumentException exception, HttpServletRequest request) {
+		return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request, Map.of());
+	}
+
+	@ExceptionHandler(PessimisticLockingFailureException.class)
+	public ResponseEntity<ApiErrorResponse> handleLockFailure(
+			PessimisticLockingFailureException exception, HttpServletRequest request) {
+		return buildResponse(HttpStatus.SERVICE_UNAVAILABLE,
+				"Inventory is busy; retry the operation", request, Map.of());
 	}
 
 	@ExceptionHandler(Exception.class)

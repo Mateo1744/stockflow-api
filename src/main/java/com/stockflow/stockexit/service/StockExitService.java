@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.stockflow.common.exception.InsufficientStockException;
+import com.stockflow.common.dto.PageResponse;
 import com.stockflow.common.exception.InvalidOperationException;
 import com.stockflow.common.exception.ResourceNotFoundException;
 import com.stockflow.inventory.entity.Inventory;
@@ -26,6 +27,8 @@ import com.stockflow.stockexit.repository.StockExitRepository;
 import com.stockflow.user.entity.User;
 import com.stockflow.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -61,6 +64,13 @@ public class StockExitService {
 		return stockExitRepository.findAll().stream()
 				.map(stockExitMapper::toResponse)
 				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public PageResponse<StockExitResponse> findAll(StockExit.Status status, StockExit.Reason reason,
+			Pageable pageable) {
+		Specification<StockExit> spec = Specification.allOf(equal("status", status), equal("reason", reason));
+		return PageResponse.from(stockExitRepository.findAll(spec, pageable).map(stockExitMapper::toResponse));
 	}
 
 	@Transactional(readOnly = true)
@@ -128,30 +138,26 @@ public class StockExitService {
 
 	private List<InventoryChange> prepareInventoryChanges(StockExit stockExit) {
 		List<InventoryChange> changes = new ArrayList<>();
-		Map<Long, Integer> nextStockByProduct = new HashMap<>();
-		Map<Long, Inventory> inventoryByProduct = new HashMap<>();
-
+		Map<Long, Integer> quantities = new HashMap<>();
 		for (StockExitItem item : stockExit.getItems()) {
 			validatePositiveQuantity(item.getQuantity());
-			Long productId = item.getProduct().getId();
-			Inventory inventory = inventoryByProduct.computeIfAbsent(
-					productId, this::findInventoryByProductId
-			);
-			int previousStock = nextStockByProduct.getOrDefault(
-					productId, inventory.getCurrentStock()
-			);
-			if (previousStock < item.getQuantity()) {
+			try { quantities.merge(item.getProduct().getId(), item.getQuantity(), Math::addExact); }
+			catch (ArithmeticException exception) { throw new InvalidOperationException(
+					"Stock exit quantity limit exceeded for product id: " + item.getProduct().getId()); }
+		}
+		for (Long productId : quantities.keySet().stream().sorted().toList()) {
+			Inventory inventory = findInventoryByProductIdForUpdate(productId);
+			int previousStock = inventory.getCurrentStock();
+			int quantity = quantities.get(productId);
+			if (previousStock < quantity) {
 				throw new InsufficientStockException(
 						"Insufficient stock for product id " + productId
 								+ ": available " + previousStock
-								+ ", requested " + item.getQuantity()
+								+ ", requested " + quantity
 				);
 			}
-			int resultingStock = previousStock - item.getQuantity();
-			nextStockByProduct.put(productId, resultingStock);
-			changes.add(new InventoryChange(
-					inventory, item.getQuantity(), previousStock, resultingStock
-			));
+			int resultingStock = previousStock - quantity;
+			changes.add(new InventoryChange(inventory, quantity, previousStock, resultingStock));
 		}
 		return changes;
 	}
@@ -186,6 +192,15 @@ public class StockExitService {
 				.orElseThrow(() -> new ResourceNotFoundException(
 						"Inventory not found for product id: " + productId
 				));
+	}
+
+	private Inventory findInventoryByProductIdForUpdate(Long productId) {
+		return inventoryRepository.findByProductIdForUpdate(productId).orElseThrow(() ->
+				new ResourceNotFoundException("Inventory not found for product id: " + productId));
+	}
+
+	private Specification<StockExit> equal(String field, Object value) {
+		return value == null ? null : (root, query, cb) -> cb.equal(root.get(field), value);
 	}
 
 	private String generateExitNumber() {

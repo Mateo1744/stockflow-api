@@ -3,8 +3,10 @@ package com.stockflow.stockentry.service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import com.stockflow.common.exception.DuplicateResourceException;
+import com.stockflow.common.dto.PageResponse;
 import com.stockflow.common.exception.InvalidOperationException;
 import com.stockflow.common.exception.ResourceNotFoundException;
 import com.stockflow.inventory.entity.Inventory;
@@ -25,6 +27,8 @@ import com.stockflow.supplier.repository.SupplierRepository;
 import com.stockflow.user.entity.User;
 import com.stockflow.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -61,6 +65,15 @@ public class StockEntryService {
 		return stockEntryRepository.findAll().stream()
 				.map(stockEntryMapper::toResponse)
 				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public PageResponse<StockEntryResponse> findAll(StockEntry.Status status, Long supplierId,
+			String referenceNumber, Pageable pageable) {
+		Specification<StockEntry> spec = Specification.allOf(
+				equal("status", status), equalNested("supplier", "id", supplierId),
+				contains("referenceNumber", referenceNumber));
+		return PageResponse.from(stockEntryRepository.findAll(spec, pageable).map(stockEntryMapper::toResponse));
 	}
 
 	@Transactional(readOnly = true)
@@ -109,16 +122,22 @@ public class StockEntryService {
 		validateDraftStatus(entry);
 		User receivedBy = findUserById(receivedByUserId);
 
+		Map<Long, Integer> quantities = new java.util.HashMap<>();
 		for (StockEntryItem item : entry.getItems()) {
 			validatePositiveQuantity(item.getQuantity());
-			Inventory inventory = findInventoryByProductId(item.getProduct().getId());
+			try { quantities.merge(item.getProduct().getId(), item.getQuantity(), Math::addExact); }
+			catch (ArithmeticException exception) { throw new InvalidOperationException(
+					"Stock limit exceeded for product id: " + item.getProduct().getId()); }
+		}
+		for (Long productId : quantities.keySet().stream().sorted().toList()) {
+			Inventory inventory = findInventoryByProductIdForUpdate(productId);
 			int previousStock = inventory.getCurrentStock();
 			int resultingStock;
 			try {
-				resultingStock = Math.addExact(previousStock, item.getQuantity());
+				resultingStock = Math.addExact(previousStock, quantities.get(productId));
 			} catch (ArithmeticException exception) {
 				throw new InvalidOperationException(
-						"Stock limit exceeded for product id: " + item.getProduct().getId()
+						"Stock limit exceeded for product id: " + productId
 				);
 			}
 
@@ -126,7 +145,7 @@ public class StockEntryService {
 			inventoryRepository.save(inventory);
 			inventoryMovementRepository.save(createMovement(
 					inventory,
-					item.getQuantity(),
+					quantities.get(productId),
 					previousStock,
 					resultingStock,
 					receivedBy,
@@ -185,6 +204,22 @@ public class StockEntryService {
 				.orElseThrow(() -> new ResourceNotFoundException(
 						"Inventory not found for product id: " + productId
 				));
+	}
+
+	private Inventory findInventoryByProductIdForUpdate(Long productId) {
+		return inventoryRepository.findByProductIdForUpdate(productId).orElseThrow(() ->
+				new ResourceNotFoundException("Inventory not found for product id: " + productId));
+	}
+
+	private Specification<StockEntry> contains(String field, String value) {
+		return value == null || value.isBlank() ? null : (root, query, cb) ->
+				cb.like(cb.lower(root.get(field)), "%" + value.trim().toLowerCase() + "%");
+	}
+	private Specification<StockEntry> equal(String field, Object value) {
+		return value == null ? null : (root, query, cb) -> cb.equal(root.get(field), value);
+	}
+	private Specification<StockEntry> equalNested(String association, String field, Object value) {
+		return value == null ? null : (root, query, cb) -> cb.equal(root.get(association).get(field), value);
 	}
 
 	private void validateReferenceNumber(Long supplierId, String referenceNumber) {

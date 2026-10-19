@@ -11,6 +11,7 @@ import com.stockflow.customer.service.CustomerService;
 import com.stockflow.inventory.service.InventoryService;
 import com.stockflow.inventory.service.InventoryMovementService;
 import com.stockflow.product.service.ProductService;
+import com.stockflow.report.ReportService;
 import com.stockflow.sale.service.SaleService;
 import com.stockflow.stockentry.service.StockEntryService;
 import com.stockflow.stockexit.service.StockExitService;
@@ -86,6 +87,27 @@ class SecurityIntegrationTest {
 
 	@MockitoBean
 	private AuthService authService;
+
+	@MockitoBean
+	private ReportService reportService;
+
+	@Test
+	void swaggerDocumentationIsPublic() throws Exception {
+		mockMvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
+		mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
+	}
+
+	@Test
+	void reportPermissionsMatchBusinessRoles() throws Exception {
+		mockMvc.perform(get("/api/reports/low-stock").with(user("manager").roles("INVENTORY_MANAGER")))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/reports/inventory-summary").with(user("seller").roles("SELLER")))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(get("/api/reports/sales-summary").with(user("seller").roles("SELLER")))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/reports/low-stock").with(user("admin").roles("ADMIN")))
+				.andExpect(status().isOk());
+	}
 
 	@Test
 	void protectedEndpointWithoutAuthenticationReturnsStandard401() throws Exception {

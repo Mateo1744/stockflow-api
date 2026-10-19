@@ -238,7 +238,7 @@ class SaleServiceTest {
 		SaleResponse response = response(5L, Sale.Status.COMPLETED);
 		when(saleRepository.findById(5L)).thenReturn(Optional.of(sale));
 		when(userRepository.findById(3L)).thenReturn(Optional.of(seller));
-		when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
+		when(inventoryRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.of(inventory));
 		when(saleRepository.save(sale)).thenReturn(sale);
 		when(saleMapper.toResponse(sale)).thenReturn(response);
 
@@ -309,7 +309,7 @@ class SaleServiceTest {
 		);
 		when(saleRepository.findById(5L)).thenReturn(Optional.of(sale));
 		when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L)));
-		when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.empty());
+		when(inventoryRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.empty());
 
 		assertThrows(ResourceNotFoundException.class, () -> saleService.complete(5L, 2L));
 		verify(inventoryRepository, never()).save(any());
@@ -325,7 +325,7 @@ class SaleServiceTest {
 		);
 		when(saleRepository.findById(5L)).thenReturn(Optional.of(sale));
 		when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L)));
-		when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
+		when(inventoryRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.of(inventory));
 
 		assertThrows(InsufficientStockException.class, () -> saleService.complete(5L, 2L));
 		assertEquals(2, inventory.getCurrentStock());
@@ -344,7 +344,7 @@ class SaleServiceTest {
 		));
 		when(saleRepository.findById(5L)).thenReturn(Optional.of(sale));
 		when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L)));
-		when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
+		when(inventoryRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.of(inventory));
 
 		assertThrows(InsufficientStockException.class, () -> saleService.complete(5L, 2L));
 		assertEquals(5, inventory.getCurrentStock());
@@ -363,7 +363,7 @@ class SaleServiceTest {
 		));
 		when(saleRepository.findById(5L)).thenReturn(Optional.of(sale));
 		when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L)));
-		when(inventoryRepository.findByProductId(any()))
+		when(inventoryRepository.findByProductIdForUpdate(any()))
 				.thenAnswer(invocation -> invocation.<Long>getArgument(0).equals(10L)
 						? Optional.of(firstInventory)
 						: Optional.of(secondInventory));

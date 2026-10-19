@@ -3,6 +3,7 @@ package com.stockflow.product.service;
 import java.util.List;
 
 import com.stockflow.category.entity.Category;
+import com.stockflow.common.dto.PageResponse;
 import com.stockflow.category.repository.CategoryRepository;
 import com.stockflow.common.exception.DuplicateResourceException;
 import com.stockflow.common.exception.ResourceNotFoundException;
@@ -14,6 +15,8 @@ import com.stockflow.product.entity.Product;
 import com.stockflow.product.mapper.ProductMapper;
 import com.stockflow.product.repository.ProductRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -41,6 +44,28 @@ public class ProductService {
 		return productRepository.findAll().stream()
 				.map(productMapper::toResponse)
 				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public PageResponse<ProductResponse> findAll(String sku, String name, Boolean active,
+			Long categoryId, Pageable pageable) {
+		Specification<Product> spec = Specification.allOf(
+				containsIgnoreCase("sku", sku), containsIgnoreCase("name", name),
+				equalsValue("active", active), equalsNested("category", "id", categoryId));
+		return PageResponse.from(productRepository.findAll(spec, pageable).map(productMapper::toResponse));
+	}
+
+	private Specification<Product> containsIgnoreCase(String field, String value) {
+		return value == null || value.isBlank() ? null : (root, query, cb) ->
+				cb.like(cb.lower(root.get(field)), "%" + value.trim().toLowerCase() + "%");
+	}
+
+	private Specification<Product> equalsValue(String field, Object value) {
+		return value == null ? null : (root, query, cb) -> cb.equal(root.get(field), value);
+	}
+
+	private Specification<Product> equalsNested(String association, String field, Object value) {
+		return value == null ? null : (root, query, cb) -> cb.equal(root.get(association).get(field), value);
 	}
 
 	@Transactional(readOnly = true)

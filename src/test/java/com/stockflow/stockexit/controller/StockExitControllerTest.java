@@ -44,17 +44,19 @@ class StockExitControllerTest {
 	@BeforeEach
 	void setUp() {
 		mockMvc = standaloneSetup(new StockExitController(stockExitService, currentUserService))
+				.setCustomArgumentResolvers(new org.springframework.data.web.PageableHandlerMethodArgumentResolver())
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
 
 	@Test
 	void findAllReturns200() throws Exception {
-		when(stockExitService.findAll()).thenReturn(List.of(response()));
+		when(stockExitService.findAll(any(), any(), any())).thenReturn(
+				new com.stockflow.common.dto.PageResponse<>(List.of(response()), 0, 20, 1, 1, true, true));
 
 		mockMvc.perform(get("/api/stock-exits"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].exitNumber").value("EXIT-1"));
+				.andExpect(jsonPath("$.content[0].exitNumber").value("EXIT-1"));
 	}
 
 	@Test

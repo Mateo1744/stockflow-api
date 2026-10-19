@@ -179,7 +179,7 @@ class StockExitServiceTest {
 		StockExitResponse response = response(5L, StockExit.Status.CONFIRMED);
 		when(stockExitRepository.findById(5L)).thenReturn(Optional.of(stockExit));
 		when(userRepository.findById(3L)).thenReturn(Optional.of(confirmer));
-		when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
+		when(inventoryRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.of(inventory));
 		when(stockExitRepository.save(stockExit)).thenReturn(stockExit);
 		when(stockExitMapper.toResponse(stockExit)).thenReturn(response);
 
@@ -211,7 +211,7 @@ class StockExitServiceTest {
 		);
 		when(stockExitRepository.findById(5L)).thenReturn(Optional.of(stockExit));
 		when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L)));
-		when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
+		when(inventoryRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.of(inventory));
 
 		assertThrows(InsufficientStockException.class, () -> stockExitService.confirm(5L, 2L));
 		assertEquals(2, inventory.getCurrentStock());
@@ -232,8 +232,8 @@ class StockExitServiceTest {
 		));
 		when(stockExitRepository.findById(5L)).thenReturn(Optional.of(stockExit));
 		when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L)));
-		when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(firstInventory));
-		when(inventoryRepository.findByProductId(20L)).thenReturn(Optional.of(secondInventory));
+		when(inventoryRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.of(firstInventory));
+		when(inventoryRepository.findByProductIdForUpdate(20L)).thenReturn(Optional.of(secondInventory));
 
 		assertThrows(InsufficientStockException.class, () -> stockExitService.confirm(5L, 2L));
 		assertEquals(10, firstInventory.getCurrentStock());
@@ -252,7 +252,7 @@ class StockExitServiceTest {
 		));
 		when(stockExitRepository.findById(5L)).thenReturn(Optional.of(stockExit));
 		when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L)));
-		when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
+		when(inventoryRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.of(inventory));
 
 		assertThrows(InsufficientStockException.class, () -> stockExitService.confirm(5L, 2L));
 		assertEquals(5, inventory.getCurrentStock());
@@ -307,7 +307,7 @@ class StockExitServiceTest {
 		);
 		when(stockExitRepository.findById(5L)).thenReturn(Optional.of(stockExit));
 		when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L)));
-		when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.empty());
+		when(inventoryRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.empty());
 
 		assertThrows(ResourceNotFoundException.class, () -> stockExitService.confirm(5L, 2L));
 		verify(inventoryRepository, never()).save(any());

@@ -38,17 +38,19 @@ class CustomerControllerTest {
 	@BeforeEach
 	void setUp() {
 		mockMvc = standaloneSetup(new CustomerController(customerService))
+				.setCustomArgumentResolvers(new org.springframework.data.web.PageableHandlerMethodArgumentResolver())
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
 
 	@Test
 	void findAllReturnsOk() throws Exception {
-		when(customerService.findAll()).thenReturn(List.of(response()));
+		when(customerService.findAll(any(), any(), any(), any())).thenReturn(
+				new com.stockflow.common.dto.PageResponse<>(List.of(response()), 0, 20, 1, 1, true, true));
 
 		mockMvc.perform(get("/api/customers"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].documentNumber").value("123456"));
+				.andExpect(jsonPath("$.content[0].documentNumber").value("123456"));
 	}
 
 	@Test

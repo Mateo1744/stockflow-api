@@ -45,17 +45,29 @@ class SaleControllerTest {
 	@BeforeEach
 	void setUp() {
 		mockMvc = standaloneSetup(new SaleController(saleService, currentUserService))
+				.setCustomArgumentResolvers(new org.springframework.data.web.PageableHandlerMethodArgumentResolver())
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
 
 	@Test
 	void findAllReturns200() throws Exception {
-		when(saleService.findAll()).thenReturn(List.of(response()));
+		when(saleService.findAll(any(), any(), any(), any(), any(), any(), any())).thenReturn(
+				new com.stockflow.common.dto.PageResponse<>(List.of(response()), 0, 20, 1, 1, true, true));
 
 		mockMvc.perform(get("/api/sales"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].saleNumber").value("SALE-1"));
+				.andExpect(jsonPath("$.content[0].saleNumber").value("SALE-1"));
+	}
+
+	@Test
+	void findAllAcceptsStatusFilter() throws Exception {
+		when(saleService.findAll(any(), any(), any(), any(), any(), any(), any())).thenReturn(
+				new com.stockflow.common.dto.PageResponse<>(List.of(), 0, 20, 0, 0, true, true));
+		mockMvc.perform(get("/api/sales").param("status", "COMPLETED"))
+				.andExpect(status().isOk());
+		verify(saleService).findAll(any(), org.mockito.ArgumentMatchers.eq(Sale.Status.COMPLETED),
+				any(), any(), any(), any(), any());
 	}
 
 	@Test

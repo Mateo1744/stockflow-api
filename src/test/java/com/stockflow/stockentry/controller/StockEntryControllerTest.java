@@ -46,16 +46,18 @@ class StockEntryControllerTest {
 	void setUp() {
 		mockMvc = standaloneSetup(
 				new StockEntryController(stockEntryService, currentUserService)
-		).setControllerAdvice(new GlobalExceptionHandler()).build();
+		).setCustomArgumentResolvers(new org.springframework.data.web.PageableHandlerMethodArgumentResolver())
+				.setControllerAdvice(new GlobalExceptionHandler()).build();
 	}
 
 	@Test
 	void findAllReturns200() throws Exception {
-		when(stockEntryService.findAll()).thenReturn(List.of(response()));
+		when(stockEntryService.findAll(any(), any(), any(), any())).thenReturn(
+				new com.stockflow.common.dto.PageResponse<>(List.of(response()), 0, 20, 1, 1, true, true));
 
 		mockMvc.perform(get("/api/stock-entries"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].referenceNumber").value("REF-1"));
+				.andExpect(jsonPath("$.content[0].referenceNumber").value("REF-1"));
 	}
 
 	@Test

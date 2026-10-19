@@ -236,7 +236,7 @@ class StockEntryServiceTest {
 		StockEntryResponse response = response(5L, StockEntry.Status.CONFIRMED);
 		when(stockEntryRepository.findById(5L)).thenReturn(Optional.of(entry));
 		when(userRepository.findById(3L)).thenReturn(Optional.of(confirmer));
-		when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
+		when(inventoryRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.of(inventory));
 		when(stockEntryRepository.save(entry)).thenReturn(entry);
 		when(stockEntryMapper.toResponse(entry)).thenReturn(response);
 
@@ -295,7 +295,7 @@ class StockEntryServiceTest {
 		StockEntry entry = entryWithItem(5L, StockEntry.Status.DRAFT, product, 4);
 		when(stockEntryRepository.findById(5L)).thenReturn(Optional.of(entry));
 		when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L)));
-		when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.empty());
+		when(inventoryRepository.findByProductIdForUpdate(10L)).thenReturn(Optional.empty());
 
 		assertThrows(ResourceNotFoundException.class, () -> stockEntryService.confirm(5L, 2L));
 		verify(inventoryRepository, never()).save(any());

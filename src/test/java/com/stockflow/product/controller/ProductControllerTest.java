@@ -39,17 +39,31 @@ class ProductControllerTest {
 	@BeforeEach
 	void setUp() {
 		mockMvc = standaloneSetup(new ProductController(productService))
+				.setCustomArgumentResolvers(new org.springframework.data.web.PageableHandlerMethodArgumentResolver())
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
 
 	@Test
 	void findAllReturnsOk() throws Exception {
-		when(productService.findAll()).thenReturn(List.of(response()));
+		when(productService.findAll(any(), any(), any(), any(), any())).thenReturn(
+				new com.stockflow.common.dto.PageResponse<>(List.of(response()), 0, 20, 1, 1, true, true));
 
 		mockMvc.perform(get("/api/products"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].sku").value("SKU-1"));
+				.andExpect(jsonPath("$.content[0].sku").value("SKU-1"));
+	}
+
+	@Test
+	void findAllAcceptsCombinedFiltersPaginationAndSort() throws Exception {
+		when(productService.findAll(any(), any(), any(), any(), any())).thenReturn(
+				new com.stockflow.common.dto.PageResponse<>(List.of(), 1, 5, 0, 0, false, true));
+		mockMvc.perform(get("/api/products").param("name", "mouse").param("active", "true")
+				.param("page", "1").param("size", "5").param("sort", "name,desc"))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.page").value(1))
+				.andExpect(jsonPath("$.size").value(5));
+		verify(productService).findAll(any(), org.mockito.ArgumentMatchers.eq("mouse"),
+				org.mockito.ArgumentMatchers.eq(true), any(), any());
 	}
 
 	@Test

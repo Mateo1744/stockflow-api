@@ -38,17 +38,19 @@ class SupplierControllerTest {
 	@BeforeEach
 	void setUp() {
 		mockMvc = standaloneSetup(new SupplierController(supplierService))
+				.setCustomArgumentResolvers(new org.springframework.data.web.PageableHandlerMethodArgumentResolver())
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
 
 	@Test
 	void findAllReturnsOk() throws Exception {
-		when(supplierService.findAll()).thenReturn(List.of(response()));
+		when(supplierService.findAll(any(), any(), any(), any())).thenReturn(
+				new com.stockflow.common.dto.PageResponse<>(List.of(response()), 0, 20, 1, 1, true, true));
 
 		mockMvc.perform(get("/api/suppliers"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].taxId").value("900123"));
+				.andExpect(jsonPath("$.content[0].taxId").value("900123"));
 	}
 
 	@Test
