@@ -39,3 +39,12 @@ build/
 **/application-local.properties
 **/application-local.yml
 **/application-local.yaml
+
+### Runtime and temporary files ###
+*.log
+logs/
+tmp/
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db

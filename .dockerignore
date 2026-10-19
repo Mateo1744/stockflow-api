@@ -1,0 +1,14 @@
+target/
+.git/
+.github/
+.idea/
+.vscode/
+*.iml
+*.log
+logs/
+tmp/
+*.tmp
+.env
+.env.*
+!.env.example
+HELP.md

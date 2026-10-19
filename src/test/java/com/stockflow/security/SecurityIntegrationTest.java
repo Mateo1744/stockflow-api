@@ -98,6 +98,14 @@ class SecurityIntegrationTest {
 	}
 
 	@Test
+	void healthEndpointIsPublicAndDoesNotExposeDetails() throws Exception {
+		mockMvc.perform(get("/actuator/health"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("UP"))
+				.andExpect(jsonPath("$.components").doesNotExist());
+	}
+
+	@Test
 	void reportPermissionsMatchBusinessRoles() throws Exception {
 		mockMvc.perform(get("/api/reports/low-stock").with(user("manager").roles("INVENTORY_MANAGER")))
 				.andExpect(status().isOk());

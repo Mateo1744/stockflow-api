@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stockflow_db}
+      POSTGRES_USER: ${DB_USERNAME:-stockflow}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    volumes:
+      - stockflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  stockflow-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-stockflow_db}
+      DB_USERNAME: ${DB_USERNAME:-stockflow}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      STOCKFLOW_BOOTSTRAP_ADMIN_ENABLED: ${STOCKFLOW_BOOTSTRAP_ADMIN_ENABLED:-false}
+      STOCKFLOW_BOOTSTRAP_ADMIN_EMAIL: ${STOCKFLOW_BOOTSTRAP_ADMIN_EMAIL:-}
+      STOCKFLOW_BOOTSTRAP_ADMIN_PASSWORD: ${STOCKFLOW_BOOTSTRAP_ADMIN_PASSWORD:-}
+      STOCKFLOW_BOOTSTRAP_ADMIN_FIRST_NAME: ${STOCKFLOW_BOOTSTRAP_ADMIN_FIRST_NAME:-}
+      STOCKFLOW_BOOTSTRAP_ADMIN_LAST_NAME: ${STOCKFLOW_BOOTSTRAP_ADMIN_LAST_NAME:-}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  stockflow_postgres_data:

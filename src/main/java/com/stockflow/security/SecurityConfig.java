@@ -102,6 +102,7 @@ public class SecurityConfig {
 				.authenticationManager(authenticationManager)
 				.authorizeHttpRequests(authorize -> authorize
 						.requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+						.requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
 						.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 						.requestMatchers("/api/reports/low-stock", "/api/reports/inventory-summary")
 								.hasAnyRole("ADMIN", "INVENTORY_MANAGER")

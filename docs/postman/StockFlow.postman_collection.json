@@ -1,0 +1,70 @@
+{
+  "info": {
+    "name": "StockFlow API",
+    "description": "Colección de operaciones principales de StockFlow. Configure baseUrl y las credenciales de bootstrap en un entorno local.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]},
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8080"},
+    {"key": "token", "value": ""},
+    {"key": "adminEmail", "value": "admin@example.com"},
+    {"key": "adminPassword", "value": "change_me"},
+    {"key": "userId", "value": "1"},
+    {"key": "categoryId", "value": "1"},
+    {"key": "supplierId", "value": "1"},
+    {"key": "customerId", "value": "1"},
+    {"key": "productId", "value": "1"},
+    {"key": "stockEntryId", "value": "1"},
+    {"key": "stockExitId", "value": "1"},
+    {"key": "saleId", "value": "1"}
+  ],
+  "item": [
+    {"name": "Auth", "item": [
+      {"name": "Login", "auth": {"type": "noauth"}, "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"}, "url": "{{baseUrl}}/api/auth/login"}, "event": [{"listen": "test", "script": {"exec": ["if (pm.response.code === 200) {", "  pm.collectionVariables.set('token', pm.response.json().token);", "}"]}}]}
+    ]},
+    {"name": "Users", "item": [
+      {"name": "Create seller", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"firstName\": \"Sara\",\n  \"lastName\": \"Seller\",\n  \"email\": \"seller@example.com\",\n  \"password\": \"change_me_123\",\n  \"active\": true,\n  \"roleNames\": [\"SELLER\"]\n}"}, "url": "{{baseUrl}}/api/users"}},
+      {"name": "List users", "request": {"method": "GET", "url": "{{baseUrl}}/api/users"}}
+    ]},
+    {"name": "Categories", "item": [
+      {"name": "Create category", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"name\":\"Electrónica\",\"description\":\"Productos electrónicos\",\"active\":true}"}, "url": "{{baseUrl}}/api/categories"}},
+      {"name": "List categories", "request": {"method": "GET", "url": "{{baseUrl}}/api/categories"}}
+    ]},
+    {"name": "Suppliers", "item": [
+      {"name": "Create supplier", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"name\":\"Proveedor Demo\",\"taxId\":\"900000001\",\"contactName\":\"Contacto\",\"email\":\"supplier@example.com\",\"phone\":\"3000000000\",\"address\":\"Bogotá\",\"active\":true}"}, "url": "{{baseUrl}}/api/suppliers"}},
+      {"name": "List suppliers", "request": {"method": "GET", "url": "{{baseUrl}}/api/suppliers?page=0&size=20&sort=name,asc"}}
+    ]},
+    {"name": "Customers", "item": [
+      {"name": "Create customer", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"documentNumber\":\"100000001\",\"firstName\":\"Cliente\",\"lastName\":\"Demo\",\"email\":\"customer@example.com\",\"phone\":\"3000000001\",\"address\":\"Bogotá\",\"active\":true}"}, "url": "{{baseUrl}}/api/customers"}},
+      {"name": "List customers", "request": {"method": "GET", "url": "{{baseUrl}}/api/customers?active=true"}}
+    ]},
+    {"name": "Products", "item": [
+      {"name": "Create product", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"sku\":\"SKU-DEMO-1\",\"name\":\"Producto Demo\",\"description\":\"Ejemplo\",\"salePrice\":199.90,\"active\":true,\"categoryId\":{{categoryId}}}"}, "url": "{{baseUrl}}/api/products"}},
+      {"name": "List products", "request": {"method": "GET", "url": "{{baseUrl}}/api/products?active=true&page=0&size=20&sort=name,asc"}}
+    ]},
+    {"name": "Inventory", "item": [
+      {"name": "Get inventory by product", "request": {"method": "GET", "url": "{{baseUrl}}/api/inventory/product/{{productId}}"}}
+    ]},
+    {"name": "Stock Entries", "item": [
+      {"name": "Create stock entry", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"supplierId\":{{supplierId}},\"referenceNumber\":\"ENTRY-DEMO-1\",\"notes\":\"Entrada demo\",\"items\":[{\"productId\":{{productId}},\"quantity\":10,\"unitCost\":100.00}]}"}, "url": "{{baseUrl}}/api/stock-entries"}},
+      {"name": "Confirm stock entry", "request": {"method": "POST", "url": "{{baseUrl}}/api/stock-entries/{{stockEntryId}}/confirm"}}
+    ]},
+    {"name": "Stock Exits", "item": [
+      {"name": "Create stock exit", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"reason\":\"INTERNAL_USE\",\"notes\":\"Salida demo\",\"items\":[{\"productId\":{{productId}},\"quantity\":1}]}"}, "url": "{{baseUrl}}/api/stock-exits"}},
+      {"name": "Confirm stock exit", "request": {"method": "POST", "url": "{{baseUrl}}/api/stock-exits/{{stockExitId}}/confirm"}}
+    ]},
+    {"name": "Sales", "item": [
+      {"name": "Create sale", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"customerId\":{{customerId}},\"items\":[{\"productId\":{{productId}},\"quantity\":1}]}"}, "url": "{{baseUrl}}/api/sales"}},
+      {"name": "Complete sale", "request": {"method": "POST", "url": "{{baseUrl}}/api/sales/{{saleId}}/complete"}}
+    ]},
+    {"name": "Inventory Movements", "item": [
+      {"name": "List movements", "request": {"method": "GET", "url": "{{baseUrl}}/api/inventory-movements?productId={{productId}}&page=0&size=20&sort=createdAt,desc"}}
+    ]},
+    {"name": "Reports", "item": [
+      {"name": "Low stock", "request": {"method": "GET", "url": "{{baseUrl}}/api/reports/low-stock"}},
+      {"name": "Sales summary", "request": {"method": "GET", "url": "{{baseUrl}}/api/reports/sales-summary"}},
+      {"name": "Inventory summary", "request": {"method": "GET", "url": "{{baseUrl}}/api/reports/inventory-summary"}}
+    ]}
+  ]
+}
