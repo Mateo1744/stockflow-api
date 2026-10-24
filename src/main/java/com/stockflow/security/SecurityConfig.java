@@ -24,9 +24,12 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, CorsProperties.class})
 public class SecurityConfig {
 
 	private static final int MINIMUM_HS256_KEY_BYTES = 32;
@@ -82,6 +85,22 @@ public class SecurityConfig {
 	}
 
 	@Bean
+	public CorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(properties.allowedOrigins());
+		configuration.setAllowedMethods(
+				java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
+		);
+		configuration.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type"));
+		configuration.setAllowCredentials(false);
+		configuration.setMaxAge(3600L);
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/api/**", configuration);
+		return source;
+	}
+
+	@Bean
 	public SecurityFilterChain securityFilterChain(
 			HttpSecurity http,
 			JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -90,6 +109,7 @@ public class SecurityConfig {
 			RestAccessDeniedHandler accessDeniedHandler
 	) throws Exception {
 		http
+				.cors(cors -> { })
 				.csrf(csrf -> csrf.disable())
 				.formLogin(form -> form.disable())
 				.httpBasic(basic -> basic.disable())

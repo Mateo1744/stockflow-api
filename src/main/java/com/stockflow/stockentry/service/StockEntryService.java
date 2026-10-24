@@ -212,14 +212,15 @@ public class StockEntryService {
 	}
 
 	private Specification<StockEntry> contains(String field, String value) {
-		return value == null || value.isBlank() ? null : (root, query, cb) ->
+		return value == null || value.isBlank() ? Specification.unrestricted() : (root, query, cb) ->
 				cb.like(cb.lower(root.get(field)), "%" + value.trim().toLowerCase() + "%");
 	}
 	private Specification<StockEntry> equal(String field, Object value) {
-		return value == null ? null : (root, query, cb) -> cb.equal(root.get(field), value);
+		return value == null ? Specification.unrestricted() : (root, query, cb) -> cb.equal(root.get(field), value);
 	}
 	private Specification<StockEntry> equalNested(String association, String field, Object value) {
-		return value == null ? null : (root, query, cb) -> cb.equal(root.get(association).get(field), value);
+		return value == null ? Specification.unrestricted() :
+				(root, query, cb) -> cb.equal(root.get(association).get(field), value);
 	}
 
 	private void validateReferenceNumber(Long supplierId, String referenceNumber) {

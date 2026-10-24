@@ -3,6 +3,7 @@ package com.stockflow.report;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,6 +14,7 @@ import com.stockflow.inventory.repository.InventoryRepository;
 import com.stockflow.product.entity.Product;
 import com.stockflow.report.dto.SalesSummaryResponse;
 import com.stockflow.sale.repository.SaleRepository;
+import com.stockflow.sale.repository.SalesSummaryProjection;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,14 +36,39 @@ class ReportServiceTest {
 
 	@Test
 	void salesSummaryMapsTotalsAndMoneyExactly() {
-		when(saleRepository.summarize(null, null)).thenReturn(
-				new Object[]{5L, new BigDecimal("125.40"), 3L, 1L, 1L});
+		when(saleRepository.summarize()).thenReturn(summary(5L, "125.40", 3L, 1L, 1L));
 		SalesSummaryResponse result = reportService.salesSummary(null, null);
 		assertEquals(5, result.totalSales());
 		assertEquals(new BigDecimal("125.40"), result.totalRevenue());
 		assertEquals(3, result.completedSales());
 		assertEquals(1, result.cancelledSales());
 		assertEquals(1, result.pendingSales());
+		verify(saleRepository).summarize();
+	}
+
+	@Test
+	void salesSummarySelectsFromOnlyQuery() {
+		Instant from = Instant.parse("2026-01-01T00:00:00Z");
+		when(saleRepository.summarizeFrom(from)).thenReturn(emptySummary());
+		reportService.salesSummary(from, null);
+		verify(saleRepository).summarizeFrom(from);
+	}
+
+	@Test
+	void salesSummarySelectsToOnlyQuery() {
+		Instant to = Instant.parse("2026-01-31T23:59:59Z");
+		when(saleRepository.summarizeTo(to)).thenReturn(emptySummary());
+		reportService.salesSummary(null, to);
+		verify(saleRepository).summarizeTo(to);
+	}
+
+	@Test
+	void salesSummarySelectsBetweenQuery() {
+		Instant from = Instant.parse("2026-01-01T00:00:00Z");
+		Instant to = Instant.parse("2026-01-31T23:59:59Z");
+		when(saleRepository.summarizeBetween(from, to)).thenReturn(emptySummary());
+		reportService.salesSummary(from, to);
+		verify(saleRepository).summarizeBetween(from, to);
 	}
 
 	@Test
@@ -65,5 +92,19 @@ class ReportServiceTest {
 		Product product = new Product(); product.setId(id); product.setSku(sku); product.setName("Product " + sku);
 		Inventory inventory = new Inventory(); inventory.setProduct(product);
 		inventory.setCurrentStock(stock); inventory.setMinimumStock(minimum); return inventory;
+	}
+
+	private SalesSummaryProjection emptySummary() {
+		return summary(0L, "0", 0L, 0L, 0L);
+	}
+
+	private SalesSummaryProjection summary(Long total, String revenue, Long completed, Long cancelled, Long pending) {
+		return new SalesSummaryProjection() {
+			public Long getTotalSales() { return total; }
+			public BigDecimal getTotalRevenue() { return new BigDecimal(revenue); }
+			public Long getCompletedSales() { return completed; }
+			public Long getCancelledSales() { return cancelled; }
+			public Long getPendingSales() { return pending; }
+		};
 	}
 }

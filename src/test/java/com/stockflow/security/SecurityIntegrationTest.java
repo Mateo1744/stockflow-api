@@ -12,12 +12,14 @@ import com.stockflow.inventory.service.InventoryService;
 import com.stockflow.inventory.service.InventoryMovementService;
 import com.stockflow.product.service.ProductService;
 import com.stockflow.report.ReportService;
+import com.stockflow.role.repository.RoleRepository;
 import com.stockflow.sale.service.SaleService;
 import com.stockflow.stockentry.service.StockEntryService;
 import com.stockflow.stockexit.service.StockExitService;
 import com.stockflow.supplier.service.SupplierService;
 import com.stockflow.user.dto.UserResponse;
 import com.stockflow.user.service.UserService;
+import com.stockflow.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,11 +37,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.autoconfigure.exclude="
+		+ "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
+		+ "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration,"
+		+ "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration,"
+		+ "org.springframework.boot.data.jpa.autoconfigure.JpaRepositoriesAutoConfiguration")
 @AutoConfigureMockMvc
 class SecurityIntegrationTest {
 
@@ -90,6 +98,56 @@ class SecurityIntegrationTest {
 
 	@MockitoBean
 	private ReportService reportService;
+
+	@MockitoBean
+	private RoleRepository roleRepository;
+
+	@MockitoBean
+	private UserRepository userRepository;
+
+	@Test
+	void preflightFromDevelopmentOriginReturnsCorsHeaders() throws Exception {
+		mockMvc.perform(options("/api/products")
+					.header("Origin", "http://localhost:5173")
+					.header("Access-Control-Request-Method", "GET")
+					.header("Access-Control-Request-Headers", "Authorization,Content-Type"))
+				.andExpect(status().isOk())
+				.andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+				.andExpect(header().string("Access-Control-Allow-Methods", org.hamcrest.Matchers.containsString("GET")))
+				.andExpect(header().string("Access-Control-Allow-Headers", org.hamcrest.Matchers.containsStringIgnoringCase("authorization")))
+				.andExpect(header().doesNotExist("Access-Control-Allow-Credentials"));
+	}
+
+	@Test
+	void preflightFromDockerOriginReturnsCorsHeaders() throws Exception {
+		mockMvc.perform(options("/api/products")
+					.header("Origin", "http://localhost:3000")
+					.header("Access-Control-Request-Method", "GET"))
+				.andExpect(status().isOk())
+				.andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"));
+	}
+
+	@Test
+	void preflightFromUntrustedOriginDoesNotReceiveCorsAuthorization() throws Exception {
+		mockMvc.perform(options("/api/products")
+					.header("Origin", "http://evil.example")
+					.header("Access-Control-Request-Method", "GET"))
+				.andExpect(status().isForbidden())
+				.andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+	}
+
+	@Test
+	void authenticatedRequestFromAllowedOriginReturnsCorsHeader() throws Exception {
+		UserDetails principal = principal("ROLE_SELLER");
+		String token = jwtService.generateToken(principal);
+		when(userDetailsService.loadUserByUsername("user@example.com")).thenReturn(principal);
+
+		mockMvc.perform(get("/api/products")
+					.header("Origin", "http://localhost:5173")
+					.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+	}
 
 	@Test
 	void swaggerDocumentationIsPublic() throws Exception {

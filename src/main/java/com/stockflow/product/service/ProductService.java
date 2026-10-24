@@ -56,16 +56,17 @@ public class ProductService {
 	}
 
 	private Specification<Product> containsIgnoreCase(String field, String value) {
-		return value == null || value.isBlank() ? null : (root, query, cb) ->
+		return value == null || value.isBlank() ? Specification.unrestricted() : (root, query, cb) ->
 				cb.like(cb.lower(root.get(field)), "%" + value.trim().toLowerCase() + "%");
 	}
 
 	private Specification<Product> equalsValue(String field, Object value) {
-		return value == null ? null : (root, query, cb) -> cb.equal(root.get(field), value);
+		return value == null ? Specification.unrestricted() : (root, query, cb) -> cb.equal(root.get(field), value);
 	}
 
 	private Specification<Product> equalsNested(String association, String field, Object value) {
-		return value == null ? null : (root, query, cb) -> cb.equal(root.get(association).get(field), value);
+		return value == null ? Specification.unrestricted() :
+				(root, query, cb) -> cb.equal(root.get(association).get(field), value);
 	}
 
 	@Transactional(readOnly = true)

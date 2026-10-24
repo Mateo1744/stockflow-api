@@ -42,12 +42,12 @@ public class CustomerService {
 	}
 
 	private Specification<Customer> contains(String field, String value) {
-		return value == null || value.isBlank() ? null : (root, query, cb) ->
+		return value == null || value.isBlank() ? Specification.unrestricted() : (root, query, cb) ->
 				cb.like(cb.lower(root.get(field)), "%" + value.trim().toLowerCase() + "%");
 	}
 
 	private Specification<Customer> equal(String field, Object value) {
-		return value == null ? null : (root, query, cb) -> cb.equal(root.get(field), value);
+		return value == null ? Specification.unrestricted() : (root, query, cb) -> cb.equal(root.get(field), value);
 	}
 
 	@Transactional(readOnly = true)

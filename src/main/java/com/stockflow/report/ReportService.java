@@ -9,6 +9,7 @@ import com.stockflow.report.dto.InventorySummaryResponse;
 import com.stockflow.report.dto.LowStockResponse;
 import com.stockflow.report.dto.SalesSummaryResponse;
 import com.stockflow.sale.repository.SaleRepository;
+import com.stockflow.sale.repository.SalesSummaryProjection;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,9 +36,19 @@ public class ReportService {
 		if (from != null && to != null && from.isAfter(to)) {
 			throw new IllegalArgumentException("from must be before or equal to to");
 		}
-		Object[] values = saleRepository.summarize(from, to);
-		return new SalesSummaryResponse(number(values[0]).longValue(), decimal(values[1]),
-				number(values[2]).longValue(), number(values[3]).longValue(), number(values[4]).longValue());
+		SalesSummaryProjection summary;
+		if (from == null && to == null) {
+			summary = saleRepository.summarize();
+		} else if (from == null) {
+			summary = saleRepository.summarizeTo(to);
+		} else if (to == null) {
+			summary = saleRepository.summarizeFrom(from);
+		} else {
+			summary = saleRepository.summarizeBetween(from, to);
+		}
+		return new SalesSummaryResponse(number(summary.getTotalSales()).longValue(), decimal(summary.getTotalRevenue()),
+				number(summary.getCompletedSales()).longValue(), number(summary.getCancelledSales()).longValue(),
+				number(summary.getPendingSales()).longValue());
 	}
 
 	@Transactional(readOnly = true)

@@ -38,10 +38,10 @@ public class InventoryMovementService {
 	public PageResponse<InventoryMovementResponse> findAll(Long productId,
 			InventoryMovement.Type type, Long performedById, Pageable pageable) {
 		Specification<InventoryMovement> spec = Specification.allOf(
-				productId == null ? null : (root, query, cb) ->
+				productId == null ? Specification.unrestricted() : (root, query, cb) ->
 						cb.equal(root.get("inventory").get("product").get("id"), productId),
-				type == null ? null : (root, query, cb) -> cb.equal(root.get("type"), type),
-				performedById == null ? null : (root, query, cb) ->
+				type == null ? Specification.unrestricted() : (root, query, cb) -> cb.equal(root.get("type"), type),
+				performedById == null ? Specification.unrestricted() : (root, query, cb) ->
 						cb.equal(root.get("performedBy").get("id"), performedById));
 		return PageResponse.from(inventoryMovementRepository.findAll(spec, pageable)
 				.map(inventoryMovementMapper::toResponse));

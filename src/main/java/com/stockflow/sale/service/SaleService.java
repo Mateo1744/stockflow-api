@@ -79,8 +79,10 @@ public class SaleService {
 		Specification<Sale> spec = Specification.allOf(
 				contains("saleNumber", saleNumber), equal("status", status),
 				equalNested("customer", "id", customerId), equalNested("seller", "id", sellerId),
-				from == null ? null : (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("createdAt"), from),
-				to == null ? null : (root, query, cb) -> cb.lessThanOrEqualTo(root.get("createdAt"), to));
+				from == null ? Specification.unrestricted() :
+						(root, query, cb) -> cb.greaterThanOrEqualTo(root.get("createdAt"), from),
+				to == null ? Specification.unrestricted() :
+						(root, query, cb) -> cb.lessThanOrEqualTo(root.get("createdAt"), to));
 		return PageResponse.from(saleRepository.findAll(spec, pageable).map(saleMapper::toResponse));
 	}
 
@@ -244,16 +246,17 @@ public class SaleService {
 	}
 
 	private Specification<Sale> contains(String field, String value) {
-		return value == null || value.isBlank() ? null : (root, query, cb) ->
+		return value == null || value.isBlank() ? Specification.unrestricted() : (root, query, cb) ->
 				cb.like(cb.lower(root.get(field)), "%" + value.trim().toLowerCase() + "%");
 	}
 
 	private Specification<Sale> equal(String field, Object value) {
-		return value == null ? null : (root, query, cb) -> cb.equal(root.get(field), value);
+		return value == null ? Specification.unrestricted() : (root, query, cb) -> cb.equal(root.get(field), value);
 	}
 
 	private Specification<Sale> equalNested(String association, String field, Object value) {
-		return value == null ? null : (root, query, cb) -> cb.equal(root.get(association).get(field), value);
+		return value == null ? Specification.unrestricted() :
+				(root, query, cb) -> cb.equal(root.get(association).get(field), value);
 	}
 
 	private String generateSaleNumber() {

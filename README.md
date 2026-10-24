@@ -91,6 +91,7 @@ El login, Swagger y `/actuator/health` son públicos. El resto de la API exige a
 | `DB_USERNAME` | Sí | Usuario de base de datos |
 | `DB_PASSWORD` | Sí | Password de base de datos |
 | `JWT_SECRET` | Sí | Secreto Base64 que decodifique al menos 32 bytes |
+| `CORS_ALLOWED_ORIGINS` | No | Lista separada por comas de orígenes web permitidos; por defecto `http://localhost:5173,http://localhost:3000` |
 | `STOCKFLOW_BOOTSTRAP_ADMIN_ENABLED` | No | Activa explícitamente el bootstrap; por defecto `false` |
 | `STOCKFLOW_BOOTSTRAP_ADMIN_EMAIL` | Si se activa | Email del primer administrador |
 | `STOCKFLOW_BOOTSTRAP_ADMIN_PASSWORD` | Si se activa | Password de al menos 8 caracteres; se almacena con BCrypt |
@@ -151,6 +152,14 @@ El volumen `stockflow_postgres_data` es persistente. No use `docker compose down
 - Colección Postman: [`docs/postman/StockFlow.postman_collection.json`](docs/postman/StockFlow.postman_collection.json)
 
 La colección guarda automáticamente el JWT recibido por login en la variable `token`.
+
+## Frontend y entorno full-stack
+
+- Repositorio frontend: [Mateo1744/stockflow-frontend](https://github.com/Mateo1744/stockflow-frontend)
+- Compose integrado: `compose.full-stack.yml` en el repositorio frontend (los repositorios deben permanecer como carpetas hermanas).
+- Datos controlados: [`docs/demo-setup.md`](docs/demo-setup.md).
+
+CORS se configura mediante `CORS_ALLOWED_ORIGINS`; no usa comodines ni credenciales de navegador. Para Docker local use `http://localhost:3000`. `VITE_API_URL` debe ser `http://localhost:8080`, porque se resuelve durante el build y luego lo utiliza el navegador del host.
 
 ## Tests y build
 

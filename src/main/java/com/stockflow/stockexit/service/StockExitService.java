@@ -200,7 +200,7 @@ public class StockExitService {
 	}
 
 	private Specification<StockExit> equal(String field, Object value) {
-		return value == null ? null : (root, query, cb) -> cb.equal(root.get(field), value);
+		return value == null ? Specification.unrestricted() : (root, query, cb) -> cb.equal(root.get(field), value);
 	}
 
 	private String generateExitNumber() {

@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -130,6 +131,13 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiErrorResponse> handleIllegalArgument(
 			IllegalArgumentException exception, HttpServletRequest request) {
 		return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request, Map.of());
+	}
+
+	@ExceptionHandler(PropertyReferenceException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidSortField(
+			PropertyReferenceException exception, HttpServletRequest request) {
+		return buildResponse(HttpStatus.BAD_REQUEST,
+				"Invalid sort field: " + exception.getPropertyName(), request, Map.of());
 	}
 
 	@ExceptionHandler(PessimisticLockingFailureException.class)
