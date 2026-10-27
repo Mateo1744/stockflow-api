@@ -2,6 +2,14 @@
 
 StockFlow es una API REST para administrar catálogo, inventario y ventas con trazabilidad de movimientos. El proyecto está orientado a demostrar un backend transaccional, seguro y reproducible con Spring Boot y PostgreSQL.
 
+La aplicación de portafolio está desplegada con el frontend en Vercel, esta API en Render y PostgreSQL administrado por Neon:
+
+- Frontend: [stockflow-frontend-sigma.vercel.app](https://stockflow-frontend-sigma.vercel.app/login)
+- API: [stockflow-api-fsul.onrender.com](https://stockflow-api-fsul.onrender.com)
+- Health check: [stockflow-api-fsul.onrender.com/actuator/health](https://stockflow-api-fsul.onrender.com/actuator/health)
+
+El servicio gratuito de Render puede suspenderse después de un periodo de inactividad y necesitar hasta unos 90 segundos para iniciar. Todos los nombres, productos, clientes y operaciones de la demo son ficticios. La interfaz presenta los importes en **USD** como convención de demostración; la API conserva los importes con `BigDecimal`, sin conversión de divisas ni soporte multimoneda.
+
 ## Problema que resuelve
 
 Centraliza productos, proveedores, clientes y existencias; registra entradas y salidas; impide vender por encima del stock disponible y conserva un historial auditable de cada cambio de inventario.
@@ -168,7 +176,7 @@ CORS se configura mediante `CORS_ALLOWED_ORIGINS`; no usa comodines ni credencia
 .\mvnw.cmd clean package
 ```
 
-La suite actual contiene **261 tests** unitarios y de integración. GitHub Actions ejecuta la misma suite con Java 21 y un PostgreSQL aislado en cada `push` y `pull_request`.
+La suite actual contiene **288 tests** unitarios y de integración. GitHub Actions ejecuta la misma suite con Java 21 y un PostgreSQL aislado en cada `push` y `pull_request`.
 
 ## Migraciones
 
@@ -208,6 +216,6 @@ Swagger contiene parámetros, filtros y esquemas detallados.
 ## Mejoras futuras
 
 - Refresh tokens y cambio/restablecimiento de contraseña.
-- Frontend web.
-- Deployment administrado y observabilidad.
+- Observabilidad, métricas y alertas operativas.
+- Automatización adicional de despliegues y pruebas end-to-end aisladas.
 - Reportes analíticos avanzados.
